@@ -1,0 +1,21 @@
+{
+  "name": "byom-mail-bot",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FM-96/byom-mail-bot.git"
+  },
+  "author": "Felix Müllner",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^11.3.0"
+  },
+  "devDependencies": {
+    "eslint": "~4.17.0"
+  }
+}
