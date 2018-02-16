@@ -1,4 +1,5 @@
 const Discord = require('discord.js');
+const he = require('he');
 const later = require('later');
 const snekfetch = require('snekfetch');
 
@@ -53,6 +54,28 @@ later.setInterval(async () => {
 }, oneMinuteSchedule);
 
 function formatMail(mail) {
-	// TODO
-	return `${mail.id}\n${mail.subject}`;
+	const MESSAGE_LENGTH_LIMIT = 1800;
+	const mailInfo = `${mail.id}\n**To:** ${he.decode(mail.to)}\n**From:** ${he.decode(mail.from)}\n**Subject:** ${he.decode(mail.subject)}`;
+	const mailBody = he.decode(mail.text).replace(/\r\n/g, '\n');
+
+	let mailProcessedBody = mailBody;
+	let files = [];
+	if (mailBody.length > MESSAGE_LENGTH_LIMIT) {
+		mailProcessedBody = mailBody.slice(0, MESSAGE_LENGTH_LIMIT - 1) + '…';
+		files = [{
+			attachment: Buffer.from(mailBody),
+			name: `${mail.id}_full.txt`,
+		}];
+	}
+
+	return [
+		`${mailInfo}`,
+		{
+			embed: {
+				description: mailProcessedBody,
+				timestamp: new Date(mail.created_at * 1000).toISOString(),
+			},
+			files,
+		},
+	];
 }
