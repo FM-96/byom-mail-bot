@@ -22,7 +22,7 @@ later.setInterval(async () => {
 			for (const mailChannel of mailCategory.children.array().filter(e => e.type === 'text')) {
 				console.log(`${guild.name}#${mailChannel.name}`);
 				// make requests to get mails and latest message in channel
-				Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(results => {
+				Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(async results => {
 					let mails = JSON.parse(JSON.stringify(results[0].body));
 					// sort results by timestamp
 					mails.sort((a, b) => {
@@ -43,7 +43,23 @@ later.setInterval(async () => {
 					}
 					// post all newer mails to channel
 					for (const mail of mails) {
-						mailChannel.send(formatMail(mail)).catch(console.error);
+						await mailChannel.send(...formatMail(mail)).catch(err => {
+							console.error(err);
+							return mailChannel.send(
+								`${mail.id}\n**__ERROR__**\n${err.message}\nMail Body Length: ${mail.text.length}`,
+								{
+									embed: {
+										title: 'Error',
+										color: 0xff0000,
+										timestamp: new Date(mail.created_at * 1000).toISOString(),
+									},
+									files: [{
+										attachment: Buffer.from(JSON.stringify(mail, null, '\t')),
+										name: `${mail.id}.json`,
+									}],
+								}
+							);
+						});
 					}
 				}).catch(console.error);
 			}
