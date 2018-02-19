@@ -4,6 +4,7 @@ const later = require('later');
 const snekfetch = require('snekfetch');
 
 const token = require('./auth.json').token;
+const version = require('./package.json').version;
 
 const client = new Discord.Client();
 
@@ -90,6 +91,9 @@ function formatMail(mail) {
 			embed: {
 				description: mailProcessedBody,
 				timestamp: new Date(mail.created_at * 1000).toISOString(),
+				footer: {
+					text: `${client.user.username} v${version}`,
+				},
 			},
 			files,
 		},
