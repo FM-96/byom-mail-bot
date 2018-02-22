@@ -56,7 +56,7 @@ later.setInterval(async () => {
 									},
 									files: [{
 										attachment: Buffer.from(JSON.stringify(mail, null, '\t')),
-										name: `${mail.id}.json`,
+										name: `${mail.id}_debug.json`,
 									}],
 								}
 							);
