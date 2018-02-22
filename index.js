@@ -76,13 +76,20 @@ function formatMail(mail) {
 	const mailBody = he.decode(mail.text).replace(/\r\n/g, '\n');
 
 	let mailProcessedBody = mailBody;
-	let files = [];
+	const files = [];
 	if (mailBody.length > MESSAGE_LENGTH_LIMIT) {
 		mailProcessedBody = mailBody.slice(0, MESSAGE_LENGTH_LIMIT - 1) + '…';
-		files = [{
+		files.push({
 			attachment: Buffer.from(mailBody),
 			name: `${mail.id}_full.txt`,
-		}];
+		});
+	}
+
+	if (mail.html) {
+		files.push({
+			attachment: Buffer.from(mail.html),
+			name: `${mail.id}_full.html`,
+		});
 	}
 
 	return [
