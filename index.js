@@ -1,10 +1,26 @@
+const cheerio = require('cheerio');
 const Discord = require('discord.js');
 const he = require('he');
 const later = require('later');
 const snekfetch = require('snekfetch');
+const TurndownService = require('turndown');
 
 const token = require('./auth.json').token;
 const version = require('./package.json').version;
+
+const turndownService = new TurndownService({
+	hr: '- - -',
+	codeBlockStyle: 'fenced',
+	fence: '```',
+});
+turndownService.addRule('no-img', {
+	filter: 'img',
+	replacement: () => '',
+});
+turndownService.addRule('underline', {
+	filter: 'u',
+	replacement: (content) => `__${content}__`,
+});
 
 const client = new Discord.Client();
 
@@ -73,30 +89,56 @@ later.setInterval(async () => {
 function formatMail(mail) {
 	const MESSAGE_LENGTH_LIMIT = 1800;
 	const mailInfo = `${mail.id}\n**To:** ${he.decode(mail.to)}\n**From:** ${he.decode(mail.from)}\n**Subject:** ${he.decode(mail.subject)}`;
-	const mailBody = he.decode(mail.text).replace(/\r\n/g, '\n');
 
-	let mailProcessedBody = mailBody;
+	let mailBody = '';
+	let title;
 	const files = [];
-	if (mailBody.length > MESSAGE_LENGTH_LIMIT) {
-		mailProcessedBody = mailBody.slice(0, MESSAGE_LENGTH_LIMIT - 1) + '…';
+
+	if (mail.has_html) {
+		const $ = cheerio.load(mail.html);
+
+		const $title = $('title');
+		if ($title.length && $title.text()) {
+			title = $title.text();
+			$title.remove();
+		}
+		const $p = $('body > p:first-child');
+		if ($p.length) {
+			// TODO check if the content is actually CSS
+			$p.remove();
+		}
+
+		const mailHtmlBody = turndownService.turndown($.html()).replace(/\r\n/g, '\n').replace(/[ \u00a0]+\n/g, '\n').replace(/^\n+|\n+$/g, '').replace(/\n{2,}/g, '\n\n').replace(/\[\]\((.+)\)/g, '[<textless link>]($1)');
+		if (mailHtmlBody !== '-') {
+			mailBody = mailHtmlBody;
+			files.push({
+				attachment: Buffer.from(mail.html),
+				name: `${mail.id}_full.html`,
+			});
+		}
+	}
+
+	if (mail.text && mail.text !== '-') {
+		const mailTextBody = he.decode(mail.text).replace(/\r\n/g, '\n').replace(/[ \u00a0]+\n/g, '\n').replace(/^\n+|\n+$/g, '').replace(/\n{2,}/g, '\n\n');
+		mailBody = mailBody || mailTextBody;
 		files.push({
-			attachment: Buffer.from(mailBody),
+			attachment: Buffer.from(mailTextBody),
 			name: `${mail.id}_full.txt`,
 		});
 	}
 
-	if (mail.html) {
-		files.push({
-			attachment: Buffer.from(mail.html),
-			name: `${mail.id}_full.html`,
-		});
+	if (mailBody.length > MESSAGE_LENGTH_LIMIT) {
+		mailBody = mailBody.slice(0, MESSAGE_LENGTH_LIMIT - 1) + '…';
+	} else if (!mailBody) {
+		mailBody = '-';
 	}
 
 	return [
 		`${mailInfo}`,
 		{
 			embed: {
-				description: mailProcessedBody,
+				title,
+				description: mailBody,
 				timestamp: new Date(mail.created_at * 1000).toISOString(),
 				footer: {
 					text: `${client.user.username} v${version}`,
