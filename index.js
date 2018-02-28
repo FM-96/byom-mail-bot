@@ -115,6 +115,10 @@ function formatMail(mail) {
 				attachment: Buffer.from(mail.html),
 				name: `${mail.id}_full.html`,
 			});
+			files.push({
+				attachment: Buffer.from(mailHtmlBody),
+				name: `${mail.id}_full.md`,
+			});
 		}
 	}
 
