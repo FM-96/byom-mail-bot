@@ -108,7 +108,7 @@ function formatMail(mail) {
 			$p.remove();
 		}
 
-		const mailHtmlBody = turndownService.turndown($.html()).replace(/\r\n/g, '\n').replace(/[ \u00a0]+\n/g, '\n').replace(/^\n+|\n+$/g, '').replace(/\n{2,}/g, '\n\n').replace(/\[\]\((.+)\)/g, '[<textless link>]($1)');
+		const mailHtmlBody = turndownService.turndown($.html()).replace(/\r\n/g, '\n').replace(/[ \u00a0]+\n/g, '\n').replace(/^\n+|\n+$/g, '').replace(/\n{2,}/g, '\n\n').replace(/\[\]\((.+?)\)/g, '[<textless link>]($1)');
 		if (mailHtmlBody !== '-') {
 			mailBody = mailHtmlBody;
 			files.push({
