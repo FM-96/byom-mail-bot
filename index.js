@@ -30,7 +30,7 @@ const oneMinuteSchedule = later.parse.recur().every().minute();
 later.setInterval(async () => {
 	for (const guild of client.guilds.array()) {
 		try {
-			const mailCategory = guild.channels.find(e => e.type !== 'text' && e.type !== 'voice' && e.name.toLowerCase() === 'mail');
+			const mailCategory = guild.channels.find(e => e.type === 'category' && e.name.toLowerCase() === 'mail');
 
 			if (!mailCategory) {
 				continue;
