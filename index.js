@@ -24,6 +24,34 @@ turndownService.addRule('underline', {
 
 const client = new Discord.Client();
 
+client.on('message', async message => {
+	if (message.channel.type !== 'text') {
+		return;
+	}
+	const me = await message.guild.fetchMember(client.user);
+
+	if (message.content.startsWith(me + ' create')) {
+		try {
+			const email = message.content.slice((me + ' create').length);
+			const response = await snekfetch.get(`https://api.byom.de/mail/secure_address?email=${email}`);
+			const securemail = response.body.securemail;
+
+			const mailCategory = message.guild.channels.find(e => e.type === 'category' && e.name.toLowerCase() === 'mail');
+			if (!mailCategory) {
+				return;
+			}
+
+			const newChannel = await message.guild.createChannel(email);
+			newChannel.setParent(mailCategory);
+			newChannel.setTopic(`${securemail}@byom.de`);
+
+			await message.channel.send(`Created channel ${newChannel}`);
+		} catch (err) {
+			console.error(err);
+		}
+	}
+});
+
 client.login(token);
 
 const oneMinuteSchedule = later.parse.recur().every().minute();
@@ -36,7 +64,7 @@ later.setInterval(async () => {
 				continue;
 			}
 
-			for (const mailChannel of mailCategory.children.array().filter(e => e.type === 'text')) {
+			for (const mailChannel of client.channels.filterArray(e => e.parentID === mailCategory.id && e.type === 'text')) { // client.channels must be used due to https://github.com/discordjs/discord.js/issues/2400
 				console.log(`${guild.name}#${mailChannel.name}`);
 				// make requests to get mails and latest message in channel
 				Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(async results => {
