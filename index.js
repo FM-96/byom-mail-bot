@@ -64,7 +64,7 @@ later.setInterval(async () => {
 				continue;
 			}
 
-			for (const mailChannel of client.channels.filterArray(e => e.parentID === mailCategory.id && e.type === 'text')) { // client.channels must be used due to https://github.com/discordjs/discord.js/issues/2400
+			for (const mailChannel of client.channels.filter(e => e.parentID === mailCategory.id && e.type === 'text').array()) { // client.channels must be used due to https://github.com/discordjs/discord.js/issues/2400
 				console.log(`${guild.name}#${mailChannel.name}`);
 				// make requests to get mails and latest message in channel
 				Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(async results => {
