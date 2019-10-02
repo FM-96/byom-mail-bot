@@ -36,14 +36,21 @@ client.on('message', async message => {
 			const response = await snekfetch.get(`https://api.byom.de/mail/secure_address?email=${email}`);
 			const securemail = response.body.securemail;
 
-			const mailCategory = message.guild.channels.find(e => e.type === 'category' && e.name.toLowerCase() === 'mail');
-			if (!mailCategory) {
+			const mailCategories = message.guild.channels.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
+			if (!mailCategories || mailCategories.length === 0) {
 				return;
 			}
 
 			const newChannel = await message.guild.createChannel(email, {type: 'text'});
-			newChannel.setParent(mailCategory);
-			newChannel.setTopic(`${securemail}@byom.de`);
+			await newChannel.setTopic(`${securemail}@byom.de`);
+			for (const mailCategory of mailCategories) {
+				try {
+					await newChannel.setParent(mailCategory);
+					break;
+				} catch (err) {
+					// noop
+				}
+			}
 
 			await message.channel.send(`Created channel ${newChannel}`);
 		} catch (err) {
@@ -58,55 +65,57 @@ const oneMinuteSchedule = later.parse.recur().every().minute();
 later.setInterval(async () => {
 	for (const guild of client.guilds.array()) {
 		try {
-			const mailCategory = guild.channels.find(e => e.type === 'category' && e.name.toLowerCase() === 'mail');
+			const mailCategories = guild.channels.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
 
-			if (!mailCategory) {
+			if (!mailCategories || mailCategories.length === 0) {
 				continue;
 			}
 
-			for (const mailChannel of client.channels.filter(e => e.parentID === mailCategory.id && e.type === 'text').array()) { // client.channels must be used due to https://github.com/discordjs/discord.js/issues/2400
-				console.log(`${guild.name}#${mailChannel.name}`);
-				// make requests to get mails and latest message in channel
-				Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(async results => {
-					let mails = JSON.parse(JSON.stringify(results[0].body));
-					// sort results by timestamp
-					mails.sort((a, b) => {
-						if (a.created_at < b.created_at) {
-							return -1;
-						}
-						if (a.created_at > b.created_at) {
-							return 1;
-						}
-						return 0;
-					});
-					// compare results to latest message in channel
-					const latestMessage = results[1].first();
-					const latestMailId = latestMessage ? latestMessage.content.split('\n')[0] : null;
-					const latestMailIndex = mails.findIndex(e => e.id === latestMailId);
-					if (latestMailIndex !== -1) {
-						mails = mails.slice(latestMailIndex + 1);
-					}
-					// post all newer mails to channel
-					for (const mail of mails) {
-						await mailChannel.send(...formatMail(mail)).catch(err => {
-							console.error(err);
-							return mailChannel.send(
-								`${mail.id}\n**__ERROR__**\n${err.message}\nMail Body Length: ${mail.text.length}`,
-								{
-									embed: {
-										title: 'Error',
-										color: 0xff0000,
-										timestamp: new Date(mail.created_at * 1000).toISOString(),
-									},
-									files: [{
-										attachment: Buffer.from(JSON.stringify(mail, null, '\t')),
-										name: `${mail.id}_debug.json`,
-									}],
-								}
-							);
+			for (const mailCategory of mailCategories) {
+				for (const mailChannel of client.channels.filter(e => e.parentID === mailCategory.id && e.type === 'text').array()) { // client.channels must be used due to https://github.com/discordjs/discord.js/issues/2400
+					console.log(`${guild.name}#${mailChannel.name}`);
+					// make requests to get mails and latest message in channel
+					Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(async results => {
+						let mails = JSON.parse(JSON.stringify(results[0].body));
+						// sort results by timestamp
+						mails.sort((a, b) => {
+							if (a.created_at < b.created_at) {
+								return -1;
+							}
+							if (a.created_at > b.created_at) {
+								return 1;
+							}
+							return 0;
 						});
-					}
-				}).catch(console.error);
+						// compare results to latest message in channel
+						const latestMessage = results[1].first();
+						const latestMailId = latestMessage ? latestMessage.content.split('\n')[0] : null;
+						const latestMailIndex = mails.findIndex(e => e.id === latestMailId);
+						if (latestMailIndex !== -1) {
+							mails = mails.slice(latestMailIndex + 1);
+						}
+						// post all newer mails to channel
+						for (const mail of mails) {
+							await mailChannel.send(...formatMail(mail)).catch(err => {
+								console.error(err);
+								return mailChannel.send(
+									`${mail.id}\n**__ERROR__**\n${err.message}\nMail Body Length: ${mail.text.length}`,
+									{
+										embed: {
+											title: 'Error',
+											color: 0xff0000,
+											timestamp: new Date(mail.created_at * 1000).toISOString(),
+										},
+										files: [{
+											attachment: Buffer.from(JSON.stringify(mail, null, '\t')),
+											name: `${mail.id}_debug.json`,
+										}],
+									}
+								);
+							});
+						}
+					}).catch(console.error);
+				}
 			}
 		} catch (err) {
 			console.error(err);
