@@ -41,7 +41,7 @@ client.on('message', async message => {
 				return;
 			}
 
-			const newChannel = await message.guild.createChannel(email);
+			const newChannel = await message.guild.createChannel(email, {type: 'text'});
 			newChannel.setParent(mailCategory);
 			newChannel.setTopic(`${securemail}@byom.de`);
 
