@@ -30,9 +30,9 @@ client.on('message', async message => {
 	}
 	const me = await message.guild.fetchMember(client.user);
 
-	if (message.content.startsWith(me + ' create')) {
+	if (message.content.startsWith(`<@${me.id}> create`) || message.content.startsWith(`<@!${me.id}> create`)) {
 		try {
-			const email = message.content.slice((me + ' create').length);
+			const email = message.content.split(' ').slice(2).join(' ');
 			const response = await snekfetch.get(`https://api.byom.de/mail/secure_address?email=${email}`);
 			const securemail = response.body.securemail;
 
