@@ -2,7 +2,7 @@ const cheerio = require('cheerio');
 const Discord = require('discord.js');
 const got = require('got');
 const he = require('he');
-const later = require('later');
+const later = require('@breejs/later');
 const TurndownService = require('turndown');
 
 const token = require('./auth.json').token;
@@ -115,7 +115,7 @@ later.setInterval(async () => {
 											attachment: Buffer.from(JSON.stringify(mail, null, '\t')),
 											name: `${mail.id}_debug.json`,
 										}],
-									}
+									},
 								);
 							});
 						}
