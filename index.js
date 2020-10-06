@@ -22,13 +22,17 @@ turndownService.addRule('underline', {
 	replacement: (content) => `__${content}__`,
 });
 
-const client = new Discord.Client();
+const client = new Discord.Client({
+	ws: {
+		intents: Discord.Intents.NON_PRIVILEGED,
+	},
+});
 
 client.on('message', async message => {
 	if (message.channel.type !== 'text') {
 		return;
 	}
-	const me = await message.guild.fetchMember(client.user);
+	const me = await message.guild.members.fetch(client.user);
 
 	if (message.content.startsWith(`<@${me.id}> create`) || message.content.startsWith(`<@!${me.id}> create`)) {
 		try {
@@ -36,13 +40,14 @@ client.on('message', async message => {
 			const response = await snekfetch.get(`https://api.byom.de/mail/secure_address?email=${email}`);
 			const securemail = response.body.securemail;
 
-			const mailCategories = message.guild.channels.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
+			const mailCategories = message.guild.channels.cache.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
 			if (!mailCategories || mailCategories.length === 0) {
 				return;
 			}
 
-			const newChannel = await message.guild.createChannel(email, {type: 'text'});
-			await newChannel.setTopic(`${securemail}@byom.de`);
+			const newChannel = await message.guild.channels.create(email, {
+				topic: `${securemail}@byom.de`,
+			});
 			for (const mailCategory of mailCategories) {
 				try {
 					await newChannel.setParent(mailCategory);
@@ -63,19 +68,19 @@ client.login(token);
 
 const oneMinuteSchedule = later.parse.recur().every().minute();
 later.setInterval(async () => {
-	for (const guild of client.guilds.array()) {
+	for (const guild of client.guilds.cache.array()) {
 		try {
-			const mailCategories = guild.channels.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
+			const mailCategories = guild.channels.cache.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
 
 			if (!mailCategories || mailCategories.length === 0) {
 				continue;
 			}
 
 			for (const mailCategory of mailCategories) {
-				for (const mailChannel of client.channels.filter(e => e.parentID === mailCategory.id && e.type === 'text').array()) { // client.channels must be used due to https://github.com/discordjs/discord.js/issues/2400
+				for (const mailChannel of guild.channels.cache.filter(e => e.parentID === mailCategory.id && e.type === 'text').array()) {
 					console.log(`${guild.name}#${mailChannel.name}`);
 					// make requests to get mails and latest message in channel
-					Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.fetchMessages({limit: 1})]).then(async results => {
+					Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.messages.fetch({limit: 1})]).then(async results => {
 						let mails = JSON.parse(JSON.stringify(results[0].body));
 						// sort results by timestamp
 						mails.sort((a, b) => {
