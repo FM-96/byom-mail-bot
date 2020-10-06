@@ -1,8 +1,8 @@
 const cheerio = require('cheerio');
 const Discord = require('discord.js');
+const got = require('got');
 const he = require('he');
 const later = require('later');
-const snekfetch = require('snekfetch');
 const TurndownService = require('turndown');
 
 const token = require('./auth.json').token;
@@ -37,7 +37,7 @@ client.on('message', async message => {
 	if (message.content.startsWith(`<@${me.id}> create`) || message.content.startsWith(`<@!${me.id}> create`)) {
 		try {
 			const email = message.content.split(' ').slice(2).join(' ');
-			const response = await snekfetch.get(`https://api.byom.de/mail/secure_address?email=${email}`);
+			const response = await got(`https://api.byom.de/mail/secure_address?email=${email}`, {responseType: 'json'});
 			const securemail = response.body.securemail;
 
 			const mailCategories = message.guild.channels.cache.filter(e => e.type === 'category' && e.name.toLowerCase() === 'mail').array();
@@ -80,7 +80,7 @@ later.setInterval(async () => {
 				for (const mailChannel of guild.channels.cache.filter(e => e.parentID === mailCategory.id && e.type === 'text').array()) {
 					console.log(`${guild.name}#${mailChannel.name}`);
 					// make requests to get mails and latest message in channel
-					Promise.all([snekfetch.get(`https://api.byom.de/mails/${mailChannel.name}`), mailChannel.messages.fetch({limit: 1})]).then(async results => {
+					Promise.all([got(`https://api.byom.de/mails/${mailChannel.name}`, {responseType: 'json'}), mailChannel.messages.fetch({limit: 1})]).then(async results => {
 						let mails = JSON.parse(JSON.stringify(results[0].body));
 						// sort results by timestamp
 						mails.sort((a, b) => {
